@@ -65,8 +65,9 @@ The server validates local host/origin and uses a per-start token for changes. I
 ```sh
 npm run check
 npm test
-npx playwright install chromium
 npm run test:browser
 ```
+
+Browser checks use installed Microsoft Edge on Windows and Google Chrome on Linux/macOS for H.264/AAC playback. If Chrome is missing, install it with `npx playwright install --with-deps chrome`. `EDITOR_QA_BROWSER` overrides the browser channel (`chrome` or `msedge`).
 
 Tests generate synthetic media and verify decoded frames/audio, model operations, persistence, cancellation, and browser flows. See [VALIDATION.md](VALIDATION.md), [tests/README.md](tests/README.md), and [CONTRIBUTING.md](CONTRIBUTING.md). The CI workflow runs from this repository root on pushes and pull requests. The source repository is [gavogavogavo/local-cut](https://github.com/gavogavogavo/local-cut); the editor runs locally on your computer. On Windows, `scripts/package-source.ps1` builds a source ZIP without dependencies, personal media, or migration backups.

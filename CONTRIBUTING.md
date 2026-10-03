@@ -1,6 +1,6 @@
 # Contributing
 
-Requires Node 22.12+ and npm. Run `npm ci`, `npm run check`, and `npm test` from this directory. For browser tests, install Chromium with `npx playwright install chromium`, then run `npm run test:browser`. These tests generate their own media; no game files are needed. The 13 legacy export regressions are included in `npm test`; the original interface can also be checked with `npm run test:legacy:browser`.
+Requires Node 22.12+ and npm. Run `npm ci`, `npm run check`, and `npm test` from this directory. Browser tests use installed Microsoft Edge on Windows and Google Chrome on Linux/macOS for H.264/AAC support. If Chrome is missing, install it with `npx playwright install --with-deps chrome`, then run `npm run test:browser`. `EDITOR_QA_BROWSER` overrides the browser channel (`chrome` or `msedge`). These tests generate their own media; no game files are needed. The 13 legacy export regressions are included in `npm test`; the original interface can also be checked with `npm run test:legacy:browser`.
 
 Run `npm run format` before submitting code. `npm run format:check` verifies the shared formatting rules without changing files.
 

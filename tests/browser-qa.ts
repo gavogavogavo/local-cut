@@ -11,8 +11,8 @@ const qa = await createContext(),
   screens = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
 await mkdir(screens, { recursive: true });
 const channel =
-  process.env.EDITOR_QA_BROWSER || (process.platform === 'win32' ? 'msedge' : undefined);
-const browser = await chromium.launch({ ...(channel ? { channel } : {}), headless: true });
+  process.env.EDITOR_QA_BROWSER || (process.platform === 'win32' ? 'msedge' : 'chrome');
+const browser = await chromium.launch({ channel, headless: true });
 const context = await browser.newContext({
   viewport: { width: 1440, height: 960 },
   acceptDownloads: true,
@@ -108,6 +108,14 @@ async function check(name: string, run: () => Promise<unknown>) {
 }
 let fatal: string | undefined, projectFile: string | undefined;
 try {
+  const codecs = await page.evaluate(() => ({
+    video: document.createElement('video').canPlayType('video/mp4; codecs="avc1.42E01E"'),
+    audio: document.createElement('audio').canPlayType('audio/mp4; codecs="mp4a.40.2"'),
+  }));
+  assert.ok(
+    codecs.video && codecs.audio,
+    'Browser checks require H.264/AAC support. Set EDITOR_QA_BROWSER to chrome or msedge.',
+  );
   await page.goto(qa.url, { waitUntil: 'networkidle' });
   await page.waitForFunction(
     () =>

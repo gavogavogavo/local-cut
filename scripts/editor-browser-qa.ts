@@ -13,7 +13,7 @@ const qa = await createQaContext(),
   screens = 'docs/screenshots/legacy';
 await mkdir(screens, { recursive: true });
 const browser = await chromium.launch({
-  channel: process.env.EDITOR_QA_BROWSER || (process.platform === 'win32' ? 'msedge' : undefined),
+  channel: process.env.EDITOR_QA_BROWSER || (process.platform === 'win32' ? 'msedge' : 'chrome'),
   headless: true,
 });
 const context = await browser.newContext({
