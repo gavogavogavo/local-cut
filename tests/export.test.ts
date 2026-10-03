@@ -136,10 +136,18 @@ check(
   },
 );
 check(
-  '25 and 50 FPS concatenation has exact quantized frame counts, cut positions and timestamps',
+  'all supported frame rates preserve exact frame counts, cut positions and timestamps',
   async () => {
     const measurements = [];
-    for (const fps of [25, 50] as const) {
+    // Independent nearest-frame arithmetic for .31,.23,.37,.19,.41 seconds.
+    const cases = [
+      { fps: 24, counts: [7, 6, 9, 5, 10] },
+      { fps: 25, counts: [8, 6, 9, 5, 10] },
+      { fps: 30, counts: [9, 7, 11, 6, 12] },
+      { fps: 50, counts: [16, 12, 19, 10, 21] },
+      { fps: 60, counts: [19, 14, 22, 11, 25] },
+    ] as const;
+    for (const { fps, counts } of cases) {
       const p = project(
         [
           clip(asset('color-tone.mp4'), { out: 0.31 }),
@@ -150,16 +158,14 @@ check(
         ],
         { fps },
       );
-      // Independent nearest-frame arithmetic: .31,.23,.37,.19,.41 seconds.
-      const counts = fps === 25 ? [8, 6, 9, 5, 10] : [16, 12, 19, 10, 21],
-        colors = [
+      const colors = [
           [255, 0, 0],
           [0, 255, 0],
           [0, 0, 255],
           [0, 255, 0],
           [255, 0, 0],
         ],
-        expectedFrames = counts.reduce((sum, value) => sum + value, 0),
+        expectedFrames = counts.reduce<number>((sum, value) => sum + value, 0),
         output = await exported(ctx, p),
         data = await rgb(output.path),
         pts = await timestamps(output.path),

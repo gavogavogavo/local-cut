@@ -100,7 +100,8 @@ async function run(
 }
 
 /** Main clips are decoded one at a time, with PCM audio so cuts have no AAC priming gaps.
- * Temporary H.264 masters bound disk use. Layers are composited in the final pass. */
+ * H.264/PCM MOV masters preserve exact frame timestamps; Matroska rounds to milliseconds.
+ * Layers are composited in the final pass. */
 export async function renderComposition(
   project: Project,
   media: Map<string, Media>,
@@ -126,7 +127,7 @@ export async function renderComposition(
         frames = clipFrames(project, clip),
         length = frames / fps,
         samples = Math.round(length * 48000),
-        segment = join(work, `clip-${i}.mkv`);
+        segment = join(work, `clip-${i}.mov`);
       const resize =
         clip.fit === 'cover'
           ? `scale=${project.width}:${project.height}:force_original_aspect_ratio=increase,crop=${project.width}:${project.height}`
@@ -158,6 +159,8 @@ export async function renderComposition(
           '4',
           '-c:a',
           'pcm_s16le',
+          '-video_track_timescale',
+          String(fps),
           '-t',
           n(length),
           '-map_metadata',
@@ -172,7 +175,7 @@ export async function renderComposition(
             `Rendering clip ${i + 1} of ${project.clips.length}`,
           ),
       );
-      files.push(`file 'clip-${i}.mkv'\nduration ${n(length)}`);
+      files.push(`file 'clip-${i}.mov'\nduration ${n(length)}`);
       elapsed += length;
     }
     const list = join(work, 'clips.ffconcat');
