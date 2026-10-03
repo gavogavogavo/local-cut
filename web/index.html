@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Clip editor · Local</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c1ee98'/%3E%3Cpath d='M8 8h16v16H8z' fill='none' stroke='%2324341b' stroke-width='3'/%3E%3Cpath d='m9 23 14-14v14z' fill='%2324341b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true"><defs>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7V5h7l2 3h9l-3 11H3V7Z"/><path d="M3 10h15"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17V5l11-2v12M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4m-4 6h4m10-6h4m-4 6h4"/></symbol>
+    <symbol id="i-in" viewBox="0 0 24 24"><path d="M7 5H4v14h3m13-7H9m5-5-5 5 5 5"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M17 5h3v14h-3M4 12h11m-5-5 5 5-5 5"/></symbol>
+  </defs></svg>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Clip editor home"><span class="brand-mark" aria-hidden="true">◩</span><span>Clip editor</span><span class="brand-tag">LOCAL</span></a>
+    <div class="local-status"><span id="connection-dot" class="status-dot"></span><span id="connection-status">Connecting…</span></div>
+  </header>
+
+  <main class="app">
+    <div id="error" class="error-banner" role="alert" hidden><span id="error-message"></span><button id="dismiss-error" class="icon-button" aria-label="Dismiss error"><svg><use href="#i-x"/></svg></button></div>
+    <div class="heading"><div><h1>Trim video</h1><p>Choose the section to keep, then add music.</p></div><button id="open-video" class="button secondary" disabled><svg><use href="#i-open"/></svg><span>Open video</span></button></div>
+
+    <div class="workspace">
+      <section class="edit-column" aria-label="Video preview and trim">
+        <div class="preview-card">
+          <div class="source-bar"><span class="source-name"><svg><use href="#i-video"/></svg><span id="video-name">No video selected</span></span><span id="video-details">Your original stays untouched</span></div>
+          <div id="video-drop" class="preview" tabindex="0" role="group" aria-label="Video preview. Drop a video file to open it.">
+            <video id="video" playsinline preload="metadata" hidden></video>
+            <div id="empty-preview" class="empty-preview"><div class="empty-icon"><svg><use href="#i-video"/></svg></div><h2>Drop a video here</h2><p>Or choose a recording from this computer.</p><button id="choose-video" class="button primary" disabled>Choose a video</button><span class="format-hint" id="file-limit">MP4 recommended · files stay on this computer</span></div>
+            <div id="upload-overlay" class="upload-overlay" hidden><span class="loader" aria-hidden="true"></span><strong id="upload-title">Opening video…</strong><span id="upload-detail">Copying to your local editor</span><progress id="upload-progress" max="1" value="0" aria-label="Import progress"></progress><button id="cancel-import" class="button quiet small">Cancel import</button></div>
+            <div class="drop-overlay" aria-hidden="true">Drop to open this video</div>
+          </div>
+          <div class="transport"><button id="play" class="play-button" aria-label="Play selection" title="Play / pause (Space)" disabled><svg><use href="#i-play"/></svg></button><div class="playhead-time"><span id="current-time">00:00.000</span><span class="time-separator">/</span><span id="source-duration">00:00.000</span></div><span id="preview-state" class="preview-state">Preview</span><div class="transport-spacer"></div><button id="set-in" class="button small quiet" title="Set start at playhead (I)" disabled><svg><use href="#i-in"/></svg>Set in</button><button id="set-out" class="button small quiet" title="Set end at playhead (O)" disabled><svg><use href="#i-out"/></svg>Set out</button></div>
+        </div>
+
+        <section class="trim-card" aria-labelledby="trim-title"><div class="section-heading"><h2 id="trim-title">Trim your clip</h2><span id="trim-instruction">Drag the edges to choose what stays</span></div>
+          <div id="timeline" class="timeline disabled"><div class="timeline-pattern"></div><div id="trim-window" class="trim-window"></div><input id="scrub" class="scrub" type="range" min="0" max="1" step="0.001" value="0" aria-label="Video playhead" disabled><button id="in-handle" class="trim-handle in-handle" type="button" role="slider" aria-label="Selection start" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0" aria-valuetext="0 seconds" aria-orientation="horizontal" disabled><span></span></button><button id="out-handle" class="trim-handle out-handle" type="button" role="slider" aria-label="Selection end" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1" aria-valuetext="1 second" aria-orientation="horizontal" disabled><span></span></button></div>
+          <div class="timeline-labels"><span>00:00</span><span id="timeline-end">00:00</span></div>
+          <div class="trim-values"><label class="time-field"><span>START <kbd>I</kbd></span><input id="trim-start" type="text" inputmode="decimal" value="00:00.000" autocomplete="off" spellcheck="false" aria-label="Clip start time, seconds or minutes colon seconds" disabled></label><div class="selection-length"><span>CLIP LENGTH</span><strong id="clip-length">—</strong></div><label class="time-field"><span>END <kbd>O</kbd></span><input id="trim-end" type="text" inputmode="decimal" value="00:00.000" autocomplete="off" spellcheck="false" aria-label="Clip end time, seconds or minutes colon seconds" disabled></label></div>
+        </section>
+        <div class="keyboard-guide"><span><kbd>Space</kbd> Play / pause</span><span><kbd>I</kbd> Set start</span><span><kbd>O</kbd> Set end</span><span class="original-note">Your original file is never changed.</span></div>
+      </section>
+
+      <aside class="settings-column" aria-label="Sound and export settings">
+        <section class="panel sound-panel" aria-labelledby="sound-title"><div class="section-heading"><h2 id="sound-title">Sound</h2><span class="section-number">01</span></div>
+          <div class="volume-label"><label for="video-volume">Original audio</label><output id="video-volume-value" for="video-volume">100%</output></div><input id="video-volume" class="slider" type="range" min="0" max="1" step="0.01" value="1" disabled><p id="original-audio-hint" class="field-hint">Keep the sounds from your video, or turn them down.</p>
+          <div class="music-divider"></div>
+          <div id="music-drop" class="music-drop"><button id="add-music" class="music-add" disabled><span class="music-add-icon"><svg><use href="#i-music"/></svg></span><span><strong>Add music</strong><small>Choose a track or drop it here</small></span><span class="plus" aria-hidden="true">+</span></button></div>
+          <div id="music-file" class="music-file" hidden><span class="track-icon"><svg><use href="#i-music"/></svg></span><span class="track-copy"><strong id="music-name"></strong><small id="music-duration"></small></span><button id="remove-music" class="icon-button" aria-label="Remove music" disabled><svg><use href="#i-x"/></svg></button></div>
+          <div id="music-settings" class="music-settings" hidden><div class="volume-label"><label for="music-volume">Music volume</label><output id="music-volume-value" for="music-volume">50%</output></div><input id="music-volume" class="slider" type="range" min="0" max="1" step="0.01" value="0.5" disabled>
+            <label class="stacked-label" for="music-offset">Start music at</label><div class="input-unit"><input id="music-offset" type="text" inputmode="decimal" value="00:00.000" autocomplete="off" spellcheck="false" aria-label="Music starting offset, seconds or minutes colon seconds" disabled><span>in the track</span></div>
+            <label class="check-label"><input id="loop-music" type="checkbox" checked disabled><span>Loop music to fill the clip</span></label>
+            <div class="fade-fields"><label for="fade-in">Fade in<div class="input-unit"><input id="fade-in" type="number" min="0" max="600" step="0.1" value="0" disabled><span>sec</span></div></label><label for="fade-out">Fade out<div class="input-unit"><input id="fade-out" type="number" min="0" max="600" step="0.1" value="0" disabled><span>sec</span></div></label></div>
+            <p id="music-hint" class="field-hint">Music begins with your trimmed clip.</p>
+          </div>
+        </section>
+
+        <section class="panel export-panel" aria-labelledby="export-title"><div class="section-heading"><h2 id="export-title">Export</h2><span class="section-number">02</span></div><label class="stacked-label" for="filename">File name</label><div class="input-unit filename-unit"><input id="filename" type="text" value="surf-clip" maxlength="100" autocomplete="off" spellcheck="false" disabled><span>.mp4</span></div><label class="stacked-label quality-label" for="quality">Quality</label><select id="quality" disabled><option value="high">High quality</option><option value="compact">Smaller file</option></select><p id="quality-hint" class="field-hint">Clear image · larger download</p><div class="export-summary"><span id="export-length">Open a video to start</span><span id="export-dimensions">MP4</span></div><button id="export" class="button primary export-button" disabled><svg><use href="#i-export"/></svg>Export clip</button>
+          <div id="export-job" class="export-job" aria-live="polite" hidden><div class="job-heading"><strong id="job-title">Preparing your clip…</strong><span id="job-percent">0%</span></div><progress id="export-progress" max="1" value="0" aria-label="Export progress"></progress><p id="job-detail">You can leave this page open while it exports.</p><button id="cancel-export" class="button quiet small">Cancel export</button><a id="download" class="button primary download-button" hidden><svg><use href="#i-export"/></svg>Download MP4</a></div>
+        </section>
+      </aside>
+    </div>
+    <footer><span class="footer-dot"></span>Local · files stay on this computer</footer>
+  </main>
+  <input id="video-file-input" type="file" accept="video/*,.mp4,.mov,.mkv,.webm,.m4v" hidden>
+  <input id="music-file-input" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.flac" hidden>
+  <audio id="music-audio" preload="metadata"></audio>
+  <div id="announcement" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

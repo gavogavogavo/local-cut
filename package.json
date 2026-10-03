@@ -1,0 +1,31 @@
+{
+  "name": "local-cut-editor",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A local timeline video editor with cuts, image and video layers, audio mixing, and MP4 export.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "tsx server.ts",
+    "check": "tsc --noEmit",
+    "format": "prettier --write \"*.ts\" \"studio/*.{js,ts,css,html}\" \"tests/*.ts\" \"scripts/*.ts\"",
+    "format:check": "prettier --check \"*.ts\" \"studio/*.{js,ts,css,html}\" \"tests/*.ts\" \"scripts/*.ts\"",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "tsx tests/browser-qa.ts",
+    "test:legacy:browser": "tsx scripts/editor-browser-qa.ts"
+  },
+  "dependencies": {
+    "ffmpeg-static": "5.3.0",
+    "ffprobe-static": "3.1.0",
+    "tsx": "4.20.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "@types/node": "24.10.1",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3"
+  }
+}

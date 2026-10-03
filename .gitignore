@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.migration-backup/
+.release/
+local-cut-source.zip
+docs/screenshots/
+.clip-editor/
+test-results/
+playwright-report/
+*.log
+tests/*-results.json
+tests/*.png

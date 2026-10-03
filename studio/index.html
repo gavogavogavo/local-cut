@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Local Cut · Local video editor</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c1ee98'/%3E%3Cpath d='M8 8h16v16H8z' fill='none' stroke='%2324341b' stroke-width='3'/%3E%3Cpath d='m9 23 14-14v14z' fill='%2324341b'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/studio/style.css" />
+    <script type="module" src="/studio/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◩</span><strong>Local Cut</strong
+        ><span class="local-badge">LOCAL</span>
+      </div>
+      <div class="project-heading">
+        <input
+          id="project-title"
+          aria-label="Project name"
+          value="Untitled project"
+          maxlength="100"
+        /><span id="save-state">Connecting…</span>
+      </div>
+      <div class="top-actions">
+        <button id="undo" class="icon-button" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
+          ↶</button
+        ><button
+          id="redo"
+          class="icon-button"
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo"
+          disabled
+        >
+          ↷</button
+        ><span class="toolbar-separator"></span
+        ><button id="projects" class="button quiet">Projects</button
+        ><button id="save-project" class="button quiet" title="Download project file">
+          Save project</button
+        ><button id="export-open" class="button primary" disabled>
+          Export video <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </header>
+    <div id="message" class="message" role="alert" hidden>
+      <span id="message-text"></span
+      ><button id="message-close" aria-label="Dismiss message">×</button>
+    </div>
+    <div id="missing-banner" class="missing-banner" hidden>
+      <span id="missing-text"></span
+      ><button id="relink-open" class="button small">Relink files</button>
+    </div>
+    <main>
+      <div class="workspace">
+        <aside class="media-panel panel" aria-labelledby="media-title">
+          <div class="panel-heading">
+            <h2 id="media-title">Media</h2>
+            <span id="media-count">0 files</span>
+          </div>
+          <button id="import-media" class="button import-button" disabled>
+            <span aria-hidden="true">＋</span> Import files
+          </button>
+          <div id="import-status" class="import-status" hidden>
+            <div>
+              <span id="import-name">Importing…</span
+              ><button id="import-cancel" aria-label="Cancel import">×</button>
+            </div>
+            <progress
+              id="import-progress"
+              max="1"
+              value="0"
+              aria-label="File import progress"
+            ></progress>
+          </div>
+          <div id="media-bin" class="media-bin" aria-label="Imported media">
+            <div class="bin-empty">
+              <span aria-hidden="true">▧</span>
+              <p>Drop video, images,<br />or music here.</p>
+              <small>Files stay on this computer.</small>
+            </div>
+          </div>
+          <p class="panel-footnote">
+            Add video clips to the main track. Place images and videos above them as layers.
+          </p>
+        </aside>
+        <section class="preview-panel" aria-label="Project preview">
+          <div class="preview-heading">
+            <span id="preview-title">Preview</span>
+            <div>
+              <span id="project-dimensions">1920 × 1080</span
+              ><button id="project-settings" class="button quiet small">Canvas settings</button>
+            </div>
+          </div>
+          <div id="preview-stage" class="preview-stage">
+            <div id="preview-surface" class="preview-surface">
+              <canvas id="preview-canvas" aria-label="Composited video preview"></canvas>
+              <div id="selection-box" class="selection-box" hidden>
+                <span id="selection-label"></span
+                ><button
+                  id="resize-layer"
+                  aria-label="Resize selected layer"
+                  title="Drag to resize"
+                ></button>
+              </div>
+              <div id="preview-empty" class="preview-empty">
+                <span aria-hidden="true">▶</span>
+                <h1>Start with a video</h1>
+                <p>Import a file, then add clips and layers.</p>
+              </div>
+            </div>
+          </div>
+          <div class="transport">
+            <div class="playback-buttons">
+              <button
+                id="frame-back"
+                class="icon-button"
+                title="Previous frame (←)"
+                aria-label="Previous frame"
+                disabled
+              >
+                Ⅰ‹</button
+              ><button
+                id="play"
+                class="play-button"
+                aria-label="Play project"
+                title="Play / pause (Space)"
+                disabled
+              >
+                ▶</button
+              ><button
+                id="frame-forward"
+                class="icon-button"
+                title="Next frame (→)"
+                aria-label="Next frame"
+                disabled
+              >
+                ›Ⅰ
+              </button>
+            </div>
+            <input
+              id="playhead-time"
+              type="text"
+              value="00:00.000"
+              aria-label="Playhead time"
+              spellcheck="false"
+            /><span class="duration-separator">/</span><span id="project-duration">00:00.000</span
+            ><span class="transport-spacer"></span><span id="preview-status">No clips</span>
+          </div>
+        </section>
+        <aside class="inspector panel" aria-labelledby="inspector-title">
+          <div class="panel-heading">
+            <h2 id="inspector-title">Canvas</h2>
+            <span id="inspector-kind">PROJECT</span>
+          </div>
+          <div id="inspector-content"></div>
+        </aside>
+      </div>
+      <section class="timeline-panel" aria-label="Editing timeline">
+        <div class="timeline-toolbar">
+          <div class="edit-tools">
+            <button id="split" class="button quiet small" disabled title="Split at playhead (S)">
+              Split <kbd>S</kbd></button
+            ><button id="duplicate" class="button quiet small" disabled>Duplicate</button
+            ><button
+              id="delete"
+              class="button quiet small"
+              disabled
+              title="Delete selected item (Delete)"
+            >
+              Delete</button
+            ><span class="toolbar-separator"></span
+            ><button
+              id="move-left"
+              class="icon-button"
+              aria-label="Move selected clip earlier"
+              title="Move earlier"
+              disabled
+            >
+              ←</button
+            ><button
+              id="move-right"
+              class="icon-button"
+              aria-label="Move selected clip later"
+              title="Move later"
+              disabled
+            >
+              →
+            </button>
+          </div>
+          <div class="zoom-control">
+            <label for="timeline-zoom">Zoom</label
+            ><input
+              id="timeline-zoom"
+              type="range"
+              min="16"
+              max="200"
+              value="64"
+              aria-label="Timeline zoom"
+            /><button id="zoom-fit" class="button quiet small">Fit</button>
+          </div>
+        </div>
+        <div class="timeline-body">
+          <div id="track-labels" class="track-labels"></div>
+          <div id="timeline-scroll" class="timeline-scroll">
+            <div id="timeline-content" class="timeline-content">
+              <div
+                id="ruler"
+                class="ruler"
+                role="slider"
+                tabindex="0"
+                aria-label="Timeline playhead"
+                aria-valuemin="0"
+                aria-valuemax="0"
+                aria-valuenow="0"
+              ></div>
+              <div id="tracks"></div>
+              <div id="timeline-playhead" class="timeline-playhead"><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="timeline-footer">
+          <span id="timeline-help"
+            >Select a clip to trim it. Drag clips to reorder; drag layers to change their start
+            time.</span
+          ><span><kbd>Space</kbd> Play <kbd>S</kbd> Split <kbd>Del</kbd> Delete</span>
+        </div>
+      </section>
+    </main>
+    <footer class="app-footer">
+      <span><i></i> Local · originals are never changed</span
+      ><span id="asset-summary">No media imported</span>
+    </footer>
+
+    <dialog id="projects-dialog">
+      <div class="dialog-heading">
+        <h2>Projects</h2>
+        <button class="icon-button" data-close="projects-dialog" aria-label="Close projects">
+          ×
+        </button>
+      </div>
+      <div class="project-dialog-actions">
+        <button id="new-project" class="button secondary">New project</button
+        ><button id="load-json" class="button secondary">Open project file</button>
+      </div>
+      <p class="muted">
+        Saved automatically on this computer. A downloaded project file stores your edits, not the
+        original media.
+      </p>
+      <div id="project-list" class="project-list"></div>
+    </dialog>
+    <dialog id="relink-dialog">
+      <div class="dialog-heading">
+        <h2>Relink missing files</h2>
+        <button class="icon-button" data-close="relink-dialog" aria-label="Close relinking">
+          ×
+        </button>
+      </div>
+      <p class="muted">
+        Choose the original file for each missing source. Your edits and timing will be kept.
+      </p>
+      <div id="relink-list"></div>
+    </dialog>
+    <dialog id="export-dialog">
+      <div class="dialog-heading">
+        <h2>Export video</h2>
+        <button
+          id="export-close"
+          class="icon-button"
+          data-close="export-dialog"
+          aria-label="Close export"
+        >
+          ×
+        </button>
+      </div>
+      <p id="export-summary" class="muted"></p>
+      <label class="field"
+        ><span>File name</span>
+        <div class="input-unit">
+          <input id="export-name" value="my-video" maxlength="100" /><span>.mp4</span>
+        </div></label
+      ><label class="field"
+        ><span>Quality</span
+        ><select id="export-quality">
+          <option value="high">High quality</option>
+          <option value="compact">Smaller file</option>
+        </select></label
+      >
+      <p class="muted">
+        Includes all clips, layers, and sound. Your project and source files stay unchanged.
+      </p>
+      <button id="export-start" class="button primary full-width">Export MP4</button>
+      <div id="export-job" hidden aria-live="polite">
+        <div class="job-heading">
+          <strong id="job-title">Preparing…</strong><span id="job-percent">0%</span>
+        </div>
+        <progress id="export-progress" max="1" value="0" aria-label="Export progress"></progress>
+        <p id="job-detail" class="muted"></p>
+        <button id="export-cancel" class="button secondary full-width">Cancel export</button
+        ><a id="download" class="button primary full-width" hidden>Download MP4</a>
+      </div>
+    </dialog>
+    <input
+      id="media-input"
+      type="file"
+      accept="video/*,audio/*,image/png,image/jpeg,.mp4,.mov,.mkv,.webm,.m4a,.wav,.mp3,.aac,.flac"
+      multiple
+      hidden
+    /><input id="project-input" type="file" accept="application/json,.json" hidden /><input
+      id="relink-input"
+      type="file"
+      hidden
+    />
+    <div id="announcement" class="sr-only" aria-live="polite"></div>
+  </body>
+</html>

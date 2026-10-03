@@ -1,0 +1,204 @@
+{
+  "created": "2026-10-02T16:04:37.240Z",
+  "browser": "154.0.4258.48",
+  "isolated": true,
+  "url": "http://127.0.0.1:58738",
+  "method": "Normal file inputs, pointer/keyboard/controls; read-only DOM/media observations; downloaded output independently probed by ffprobe.",
+  "results": [
+    {
+      "name": "Local launch is ready, empty controls are safe, and desktop layout fits",
+      "pass": true,
+      "detail": {
+        "scroll": 1440,
+        "width": 1440,
+        "trimBottom": 887.53125,
+        "viewport": 960
+      }
+    },
+    {
+      "name": "Opening a local video probes duration, enables editing, and preserves audio",
+      "pass": true,
+      "detail": {
+        "video": {
+          "time": 0,
+          "duration": 6,
+          "paused": true,
+          "volume": 1,
+          "ready": 4,
+          "src": "http://127.0.0.1:58738/api/media/0a40ab7e-e280-4f6b-8554-9acc3e5b6cf4"
+        },
+        "music": {
+          "time": 0,
+          "duration": null,
+          "paused": true,
+          "volume": 1,
+          "loop": false,
+          "src": ""
+        }
+      }
+    },
+    {
+      "name": "Precise trim entries, dual drag handles, and keyboard handles set real bounds",
+      "pass": true,
+      "detail": {
+        "start": "00:00.500",
+        "end": "00:04.500"
+      }
+    },
+    {
+      "name": "Scrubbing and I/O shortcuts use the playhead; typing does not trigger shortcuts",
+      "pass": true,
+      "detail": {
+        "setIn": 1.797,
+        "setOut": 3.601
+      }
+    },
+    {
+      "name": "Music import, gain, offset and whole-track loop preview follow the edit",
+      "pass": true,
+      "detail": {
+        "video": {
+          "time": 2.400855,
+          "duration": 6,
+          "paused": false,
+          "volume": 0.4,
+          "ready": 4,
+          "src": "http://127.0.0.1:58738/api/media/0a40ab7e-e280-4f6b-8554-9acc3e5b6cf4"
+        },
+        "music": {
+          "time": 0.33196,
+          "duration": 3,
+          "paused": false,
+          "volume": 0.5,
+          "loop": true,
+          "src": "http://127.0.0.1:58738/api/media/b550c54e-826c-4026-8b83-413d17a46aea"
+        },
+        "expectedMusicTime": 0.40085499999999996,
+        "tolerance": 0.25
+      }
+    },
+    {
+      "name": "Non-loop music fades at its audible end; selection playback stops at Out",
+      "pass": true,
+      "detail": {
+        "fadeSample": {
+          "video": {
+            "time": 1.713015,
+            "duration": 6,
+            "paused": false,
+            "volume": 0.4,
+            "ready": 4,
+            "src": "http://127.0.0.1:58738/api/media/0a40ab7e-e280-4f6b-8554-9acc3e5b6cf4"
+          },
+          "music": {
+            "time": 2.722197,
+            "duration": 3,
+            "paused": false,
+            "volume": 0.28770399999999996,
+            "loop": false,
+            "src": "http://127.0.0.1:58738/api/media/b550c54e-826c-4026-8b83-413d17a46aea"
+          }
+        },
+        "expectedVolume": 0.28698500000000005,
+        "end": {
+          "video": {
+            "time": 4.5,
+            "duration": 6,
+            "paused": true,
+            "volume": 0.4,
+            "ready": 1,
+            "src": "http://127.0.0.1:58738/api/media/0a40ab7e-e280-4f6b-8554-9acc3e5b6cf4"
+          },
+          "music": {
+            "time": 0,
+            "duration": 3,
+            "paused": true,
+            "volume": 0,
+            "loop": false,
+            "src": "http://127.0.0.1:58738/api/media/b550c54e-826c-4026-8b83-413d17a46aea"
+          }
+        }
+      }
+    },
+    {
+      "name": "Export sends the UI edit, exposes progress, and downloads a real trimmed MP4",
+      "pass": true,
+      "detail": {
+        "payload": {
+          "videoId": "0a40ab7e-e280-4f6b-8554-9acc3e5b6cf4",
+          "musicId": "b550c54e-826c-4026-8b83-413d17a46aea",
+          "start": 0.5,
+          "end": 4.5,
+          "videoVolume": 0.4,
+          "musicVolume": 0.5,
+          "musicOffset": 1.5,
+          "fadeIn": 0.4,
+          "fadeOut": 0.5,
+          "loopMusic": true,
+          "quality": "compact",
+          "filename": "editor-browser-check"
+        },
+        "download": "editor-browser-check.mp4",
+        "duration": "4.000000"
+      }
+    },
+    {
+      "name": "Changing an edit labels its old download, and short selections clamp fades safely",
+      "pass": true,
+      "detail": {
+        "previousExportLabel": true
+      }
+    },
+    {
+      "name": "Invalid imports show an error and retain the current usable edit",
+      "pass": true,
+      "detail": {
+        "previousVideoRetained": true
+      }
+    },
+    {
+      "name": "Replacing video resets trim only and removes the old local working copy",
+      "pass": true,
+      "detail": {
+        "oldWorkingCopyRemoved": true,
+        "musicAndGainsPreserved": true
+      }
+    },
+    {
+      "name": "Mobile editor has no horizontal overflow and all controls remain reachable",
+      "pass": true,
+      "detail": {
+        "scroll": 390,
+        "width": 390
+      }
+    },
+    {
+      "name": "Music removal releases its working copy and leaves original audio available",
+      "pass": true,
+      "detail": {
+        "oldWorkingCopyRemoved": true
+      }
+    },
+    {
+      "name": "A running export can be cancelled through the UI and retried",
+      "pass": true,
+      "detail": {
+        "cancelled": true,
+        "retryComplete": true
+      }
+    },
+    {
+      "name": "The minimum selection from a keyboard handle exports without floating-point rejection",
+      "pass": true,
+      "detail": {
+        "start": 5.95,
+        "end": 6,
+        "duration": 0.04999999999999982
+      }
+    }
+  ],
+  "errors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 400 (Bad Request)"
+  ]
+}

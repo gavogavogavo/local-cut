@@ -1,0 +1,158 @@
+{
+  "scope": "Native local MP4 editor integration; generated media, decoded frames and PCM, real HTTP endpoints",
+  "createdAt": "2026-10-02T15:54:52.847Z",
+  "results": [
+    {
+      "name": "uploads report measured video, music, and silent-track metadata",
+      "passed": true,
+      "durationMs": 0.08809999999994034
+    },
+    {
+      "name": "trim exports the expected first and last frames, frame count, size, and duration",
+      "passed": true,
+      "durationMs": 668.6308999999999
+    },
+    {
+      "name": "original and music gains, offset, whole-track looping, and clip-relative fades are audible in decoded PCM",
+      "passed": true,
+      "durationMs": 665.0448999999999
+    },
+    {
+      "name": "non-looping music ends in silence and muted original audio remains absent",
+      "passed": true,
+      "durationMs": 659.5551
+    },
+    {
+      "name": "short non-looping music fades at its audible end before the silent clip tail",
+      "passed": true,
+      "durationMs": 676.0945999999999
+    },
+    {
+      "name": "silent video exports without invented audio; music-only exports work",
+      "passed": true,
+      "durationMs": 1005.9152999999997
+    },
+    {
+      "name": "an original audio track that starts late preserves its video synchronization",
+      "passed": true,
+      "durationMs": 2500.3908
+    },
+    {
+      "name": "compact export pads odd dimensions and retains the first original audio track",
+      "passed": true,
+      "durationMs": 1077.5257000000001
+    },
+    {
+      "name": "media byte ranges return exact bytes and malformed ranges fail safely",
+      "passed": true,
+      "durationMs": 3.789999999999054
+    },
+    {
+      "name": "invalid and interrupted imports remove partial files and permit a clean retry",
+      "passed": true,
+      "durationMs": 354.4261000000006
+    },
+    {
+      "name": "invalid bounds, IDs, gains, fades, and qualities are rejected before export",
+      "passed": true,
+      "durationMs": 7.7950999999993655
+    },
+    {
+      "name": "mutating requests require the token and untrusted web origins cannot control the local editor",
+      "passed": true,
+      "durationMs": 1.7555000000011205
+    },
+    {
+      "name": "cancelling a native export terminates the job without publishing a partial MP4",
+      "passed": true,
+      "durationMs": 662.6502
+    }
+  ],
+  "metrics": {
+    "trim": {
+      "duration": 3,
+      "frames": 90,
+      "firstFrameLumaMAE": 0.4053819444444444,
+      "lastFrameLumaMAE": 0.5664236111111111,
+      "maxMAE": 4
+    },
+    "mix": [
+      {
+        "t": 0.2,
+        "original": 0.049884381249021365,
+        "originalExpected": 0.049973056503781366,
+        "music": 0.012487767594339354,
+        "musicExpected": 0.012499985022934463
+      },
+      {
+        "t": 0.9,
+        "original": 0.0500148505941693,
+        "originalExpected": 0.04995478815913487,
+        "music": 0.0999767975261602,
+        "musicExpected": 0.09999953533892796
+      },
+      {
+        "t": 1.8,
+        "original": 0.04989422702094233,
+        "originalExpected": 0.049973031882329114,
+        "music": 0.02496044287681494,
+        "musicExpected": 0.024999469810110152
+      },
+      {
+        "t": 2.8,
+        "original": 0.04994875337389114,
+        "originalExpected": 0.05000252888847422,
+        "music": 0.04993380220265542,
+        "musicExpected": 0.04999994009173775
+      },
+      {
+        "t": 3.8,
+        "original": 0.04994117638773434,
+        "originalExpected": 0.04997807883138971,
+        "music": 0.02499116917834656,
+        "musicExpected": 0.024999883834731975
+      }
+    ],
+    "nonloop": {
+      "tailRMS": 0,
+      "original440Hz": 6.8035984513347e-7
+    },
+    "shortMusicFade": {
+      "fadeIn880Hz": 0.02502552867185904,
+      "fadeOut880Hz": 0.04995761028566068,
+      "silentTailRMS": 0
+    },
+    "audioSync": {
+      "inputAudioStart": 0.978,
+      "measurements": [
+        {
+          "start": 0,
+          "initialSilenceRMS": 0
+        },
+        {
+          "start": 0.4,
+          "initialSilenceRMS": 0
+        }
+      ]
+    },
+    "oddDimensions": {
+      "source": [
+        321,
+        181
+      ],
+      "output": [
+        322,
+        182
+      ],
+      "fps": 24,
+      "first440Hz": 0.12489493676031567,
+      "second660Hz": 0.00001741738808788358
+    },
+    "importRecovery": {
+      "invalidRemoved": true,
+      "interruptedRemoved": true,
+      "retrySucceeded": true
+    },
+    "cancellation": "cancelled"
+  }
+}
