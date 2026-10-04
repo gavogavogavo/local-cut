@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { addAudio, splitAudio, trimAudio, removeItem } from '../studio/model.js';
 import {
   createContext,
   clip,
@@ -341,6 +342,28 @@ check(
       duration: Number(output.info.format.duration),
       invisibleOverlay880: tone(audio, 0.8, 880),
     };
+  },
+);
+check(
+  'a split, trimmed and moved song exports the chosen later source audio with silence around it',
+  async () => {
+    const song = asset('music-880.wav');
+    let p = addAudio(project([clip(asset('silent.mp4'), { out: 1.2 })]), song);
+    p = splitAudio(p, p.audio[0].id, 2, song);
+    p = removeItem(p, 'audio', p.audio[0].id);
+    p = trimAudio(p, p.audio[0].id, 'end', 2.8, song);
+    p.audio[0].start = 0.2;
+    const output = await exported(ctx, p),
+      decoded = await pcm(output.path);
+    near(
+      tone(decoded, 0.5, 880),
+      0.05,
+      0.006,
+      'chosen final source interval, not the song opening',
+    );
+    assert.ok(rms(decoded, 0.03, 0.15) < 0.0005);
+    assert.ok(rms(decoded, 1.05, 1.17) < 0.0005);
+    near(Number(output.info.format.duration), 1.2, 0.06, 'export still ends with main video');
   },
 );
 check(

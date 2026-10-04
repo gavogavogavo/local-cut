@@ -210,6 +210,14 @@ export function duration(project) {
     project.clips.reduce((frames, clip) => frames + clipFrames(project, clip), 0) / project.fps
   );
 }
+/** Editing can reach the full music source; exports still end with the main video. */
+export function timelineDuration(project) {
+  return Math.max(
+    duration(project),
+    ...project.overlays.map((item) => item.start + item.duration),
+    ...project.audio.map((item) => item.start + item.duration),
+  );
+}
 export function clipStarts(project) {
   let frames = 0;
   return project.clips.map((clip) => {
@@ -266,6 +274,80 @@ export function splitClip(project, clipId, timeAbsolute) {
   if (clipFrames(p, left) + clipFrames(p, right) !== total)
     fail('This cut cannot preserve the clip’s exact frame duration.');
   p.clips.splice(index, 1, left, right);
+  return normalizeProject(p);
+}
+function audioSource(project, itemId, media) {
+  const index = project.audio.findIndex((item) => item.id === itemId);
+  if (index < 0) fail('This audio is no longer on the timeline.');
+  const item = project.audio[index],
+    m = source(media, ['audio', 'music', 'video']);
+  if (m.id !== item.mediaId) fail('Relink this audio source before editing it.');
+  return { item, index, media: m };
+}
+export function splitAudio(project, itemId, timeAbsolute, media) {
+  const p = normalizeProject(project),
+    { item, index, media: m } = audioSource(p, itemId, media);
+  if (!Number.isFinite(timeAbsolute)) fail('Choose a valid cut time.');
+  const cut = Math.round(timeAbsolute * p.fps) / p.fps,
+    leftDuration = cut - item.start,
+    rightDuration = item.duration - leftDuration;
+  if (Math.min(leftDuration, rightDuration) + EPS < 1 / p.fps)
+    fail('Place the playhead inside the selected audio, with at least one frame on each side.');
+  const offset = item.in + leftDuration;
+  if (!item.loop && offset >= m.duration)
+    fail('This part of the audio is silent. Choose a cut before the source ends.');
+  p.audio.splice(
+    index,
+    1,
+    { ...item, duration: leftDuration, fadeIn: Math.min(item.fadeIn, leftDuration), fadeOut: 0 },
+    {
+      ...item,
+      id: freshId(),
+      start: cut,
+      in: item.loop ? offset % m.duration : offset,
+      duration: rightDuration,
+      fadeIn: 0,
+      fadeOut: Math.min(item.fadeOut, rightDuration),
+    },
+  );
+  return normalizeProject(p);
+}
+/** Trim a timeline edge without moving the source heard at the remaining times. */
+export function trimAudio(project, itemId, edge, timeAbsolute, media) {
+  const p = normalizeProject(project),
+    { item, index, media: m } = audioSource(p, itemId, media);
+  if (!['start', 'end'].includes(edge) || !Number.isFinite(timeAbsolute))
+    fail('Choose a valid audio trim.');
+  const frame = 1 / p.fps,
+    end = item.start + item.duration,
+    point = Math.round(timeAbsolute * p.fps) / p.fps,
+    clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  let start = item.start,
+    offset = item.in,
+    length;
+  if (edge === 'start') {
+    const earliest = item.loop ? 0 : Math.max(0, item.start - item.in),
+      latest = item.loop
+        ? end - frame
+        : Math.min(end - frame, item.start + m.duration - item.in - frame);
+    start = clamp(point, earliest, Math.max(earliest, latest));
+    offset = item.in + start - item.start;
+    if (item.loop) offset = ((offset % m.duration) + m.duration) % m.duration;
+    length = end - start;
+  } else {
+    const latest = item.loop
+      ? LIMITS.duration
+      : Math.min(LIMITS.duration, item.start + m.duration - item.in);
+    length = clamp(point, item.start + frame, Math.max(item.start + frame, latest)) - item.start;
+  }
+  p.audio[index] = {
+    ...item,
+    start,
+    in: offset,
+    duration: length,
+    fadeIn: Math.min(item.fadeIn, length),
+    fadeOut: Math.min(item.fadeOut, length),
+  };
   return normalizeProject(p);
 }
 export function removeItem(project, kind, itemId) {
@@ -350,16 +432,15 @@ export function addAudio(project, media, at = 0) {
   const p = normalizeProject(project),
     m = source(media, ['audio', 'music', 'video']);
   if (m.kind === 'video' && !m.hasAudio) fail('This video has no audio track.');
-  const start = number(at, 'Audio start', 0, LIMITS.duration, 0),
-    remaining = duration(p) - start;
+  const start = number(at, 'Audio start', 0, LIMITS.duration, 0);
   p.audio.push({
     id: freshId(),
     mediaId: m.id,
     start,
     in: 0,
-    duration: Math.min(LIMITS.duration - start, remaining > 0 ? remaining : m.duration),
+    duration: Math.min(LIMITS.duration - start, m.duration),
     volume: 0.25,
-    loop: true,
+    loop: false,
     fadeIn: 0,
     fadeOut: 0,
   });

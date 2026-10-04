@@ -24,7 +24,7 @@ The install downloads FFmpeg locally. Absolute executable paths can be supplied 
 1. **Import** video, PNG/JPEG images, or audio into the media bin. MP4 with H.264/AAC is the most reliable preview format; MP3/WAV are good audio choices.
 2. Add videos to the **main track**. Select a clip, seek, and press **S** to split. Delete unwanted pieces. Drag clips or use earlier/later buttons to reorder. Adjust source in/out points, speed, volume, and fit in the inspector.
 3. Add images/videos as **layers**. Set start, duration, position, size, opacity, fades, and video volume. Drag a layer in the preview to move it; drag its corner to resize. PNG transparency is preserved. Layer order controls which picture is on top.
-4. Add music/sound to **audio tracks**. Set placement, source offset, volume, fades, and looping. Multiple tracks can overlap. Original clip audio has its own volume.
+4. Add music/sound to **audio tracks**. The full song is added, even when it is longer than the video. Select audio, seek on the ruler, and press **S** (or Split) to cut it; delete unwanted pieces and drag the remaining piece into place. Drag either audio edge to trim. **Start in song / End in song** choose exact source times. **Use full song** restores a previously shortened track; **Fit to video** trims its end to the remaining video. Set volume, fades, and optional looping. Multiple tracks can overlap. Original clip audio has its own volume.
 5. Choose landscape, portrait, or square **canvas settings**, resolution, and frame rate. Export MP4, watch progress, and download. Cancelling an export leaves your project and sources unchanged.
 
 **Space** plays/pauses; **Left/Right** steps a frame; **S** splits; **Delete** removes the selection; **Ctrl/Cmd+Z** undoes; **Ctrl/Cmd+Shift+Z** redoes. Shortcuts do not replace typing inside fields.
@@ -33,9 +33,10 @@ The install downloads FFmpeg locally. Absolute executable paths can be supplied 
 
 Projects autosave locally. The Projects menu opens saved work or starts a new project. Save project downloads a JSON edit description with a media manifest, **not the media files**. Transfer the sources separately and relink when moving to another computer. Back up the entire data directory to preserve everything.
 
-Main clips join without gaps. Each clip duration rounds to a whole output frame. Source trims use source seconds; speed changes preserve audio pitch. Deleting/shortening a main clip moves later main clips earlier. **Picture and audio layers retain absolute timeline positions**; adjust them when they need to follow an edit. Layers do not extend the main sequence.
+Main clips join without gaps. Each clip duration rounds to a whole output frame. Source trims use source seconds; speed changes preserve audio pitch. Deleting/shortening a main clip moves later main clips earlier. **Picture and audio layers retain absolute timeline positions**; adjust them when they need to follow an edit. The editor can seek and play the full audio beyond the **Video ends** marker, so later song sections can be cut and moved into place. **Fit** above the timeline shows the whole edit. Exports still end with the main video.
 
 Fades remain at authored times; shortening the main sequence does not shift them earlier. Non-looping audio falls silent when its source ends and fades out at that audible end. Looping starts at the selected offset, then repeats the full source.
+Splitting audio retains the fade-in on the first piece and fade-out on the second, clamped to each piece's length; it does not add fades at the cut. Removing an audio piece leaves other items in place.
 
 The browser preview is for interactive editing, not sample-accurate mixing. FFmpeg produces the final file with fixed frame timing. No proxies are generated; high-resolution or many simultaneous videos can slow preview playback.
 

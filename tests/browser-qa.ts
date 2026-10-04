@@ -6,9 +6,22 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { createContext, probe, rgbFrame, color } from './native-helper';
+import { createContext, probe, rgbFrame, color, native, ffmpeg, upload } from './native-helper';
 const qa = await createContext(),
   screens = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
+const longSong = join(qa.dir, 'long-song.wav');
+await native(ffmpeg, [
+  '-v',
+  'error',
+  '-f',
+  'lavfi',
+  '-i',
+  'sine=frequency=330:sample_rate=16000:duration=210',
+  '-c:a',
+  'pcm_s16le',
+  longSong,
+]);
+qa.assets['long-song.wav'] = await upload(qa, longSong, 'music');
 await mkdir(screens, { recursive: true });
 const channel =
   process.env.EDITOR_QA_BROWSER || (process.platform === 'win32' ? 'msedge' : 'chrome');
@@ -326,10 +339,105 @@ try {
     return { before, after };
   });
   await check(
+    'Full-length music can be previewed past the video, split, moved, trimmed, restored and saved',
+    async () => {
+      const clips = (await snap()).project.clips;
+      await seek(0);
+      await add('long-song.wav', 'audio');
+      let s = await snap();
+      assert.equal(s.project.audio[0].duration, 210);
+      assert.equal(s.project.audio[0].loop, false);
+      assert.equal(await page.locator('#project-duration').innerText(), '00:02.500');
+      await page.locator('#zoom-fit').click();
+      assert.ok(Number(await page.locator('#timeline-zoom').inputValue()) < 16);
+      await seek(80);
+      await waitColor([0, 0, 0]);
+      await page.locator('#play').click();
+      await page.waitForFunction(() => (window as any).__LOCAL_CUT__.snapshot().time > 80.25);
+      s = await snap();
+      const playingAudio = s.preview.elements.find((e: any) => e.id === s.project.audio[0].id);
+      assert.ok(
+        playingAudio && !playingAudio.paused && Math.abs(playingAudio.time - s.time) < 0.25,
+      );
+      await page.locator('#play').click();
+      await seek(80);
+      await page.locator('#split').click();
+      assert.equal((await snap()).project.audio.length, 2);
+      await seek(100);
+      await page.locator('#preview-title').click();
+      await page.keyboard.press('s');
+      s = await snap();
+      assert.deepEqual(
+        s.project.audio.map((a: any) => [a.start, a.in, a.duration]),
+        [
+          [0, 0, 80],
+          [80, 80, 20],
+          [100, 100, 110],
+        ],
+      );
+      await page.locator('#delete').click();
+      await item('audio', 0).click();
+      await page.locator('#delete').click();
+      await item('audio', 0).click();
+      await fill('layer-start', '0');
+      await page.locator('#audio-fit').click();
+      await fill('layer-in', '1:50');
+      await fill('audio-out', '1:51');
+      s = await snap();
+      assert.deepEqual(
+        [s.project.audio[0].start, s.project.audio[0].in, s.project.audio[0].duration],
+        [0, 110, 1],
+      );
+      await seek(0.25);
+      await page.waitForFunction(() => {
+        const s = (window as any).__LOCAL_CUT__.snapshot();
+        const a = s.preview.elements.find((e: any) => e.id === s.project.audio[0].id);
+        return a && Math.abs(a.time - 110.25) < 0.15;
+      });
+      await page.locator('#audio-full').click();
+      assert.equal((await snap()).project.audio[0].duration, 210);
+      await page.locator('#audio-fit').click();
+      await page.locator('#zoom-fit').click();
+      const dragEdge = async (edge: string, pixels: number) => {
+        const handle = item('audio', 0).locator(`[data-trim="${edge}"]`);
+        await handle.scrollIntoViewIfNeeded();
+        const box = await handle.boundingBox();
+        assert.ok(box);
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + pixels, box.y + box.height / 2, { steps: 5 });
+        await page.mouse.up();
+      };
+      await dragEdge('start', 40);
+      s = await snap();
+      assert.ok(s.project.audio[0].in > 0);
+      assert.equal(s.project.audio[0].in, s.project.audio[0].start);
+      const length = s.project.audio[0].duration;
+      await dragEdge('end', -40);
+      assert.ok((await snap()).project.audio[0].duration < length);
+      await page.screenshot({ path: join(screens, 'studio-audio-trimming.png'), fullPage: true });
+      await page.locator('#undo').click();
+      await page.locator('#undo').click();
+      assert.equal((await snap()).project.audio[0].duration, 2.5);
+      await page.locator('#redo').click();
+      assert.ok((await snap()).project.audio[0].in > 0);
+      await saved();
+      const savedAudio = (await snap()).project.audio;
+      await page.reload({ waitUntil: 'networkidle' });
+      await ready();
+      assert.deepEqual((await snap()).project.audio, savedAudio);
+      assert.deepEqual((await snap()).project.clips, clips);
+      await item('audio', 0).click();
+      await page.locator('#delete').click();
+      return { songDuration: 210, chosenSourceStart: 110, savedAudio };
+    },
+  );
+  await check(
     'Multiple audio layers expose independent timing, offsets, loops, gains and fades',
     async () => {
       await seek(0.1);
       await add('music-880.wav', 'audio');
+      await page.locator('#audio-loop').check();
       await fill('layer-start', '.1');
       await fill('layer-duration', '2.4');
       await fill('layer-in', '2.5');

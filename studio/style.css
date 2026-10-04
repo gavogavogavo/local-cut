@@ -888,6 +888,44 @@ input[type='range'] {
 .timeline-item.audio {
   background: repeating-linear-gradient(90deg, #2e463b, #2e463b 3px, #3a5b49 3px, #3a5b49 4px);
   border-color: #597a62;
+  padding-left: 13px;
+  padding-right: 13px;
+}
+.audio-trim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: ew-resize;
+  background: #b4d78d44;
+  border-inline: 1px solid #b4d78d66;
+}
+.audio-trim:hover {
+  background: var(--accent);
+}
+.audio-trim-start {
+  left: 0;
+}
+.audio-trim-end {
+  right: 0;
+}
+.audio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.video-end-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--accent);
+  padding: 3px 5px;
+  color: var(--accent);
+  background: #182310;
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .timeline-item.selected {
   border: 2px solid var(--accent);

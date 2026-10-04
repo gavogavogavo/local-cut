@@ -85,12 +85,27 @@ export function validateProject(
 ): Project;
 export function clipFrames(project: Project, clip: Clip): number;
 export function duration(project: Project): number;
+/** Full editing extent, including layers beyond the exported main video. */
+export function timelineDuration(project: Project): number;
 /** Start seconds, aligned with project.clips; calculated from integer frame counts. */
 export function clipStarts(project: Project): number[];
 /** Half-open interval; returns null at the exact timeline end. */
 export function clipAt(project: Project, time: number): ActiveClip | null;
 /** Snaps to an output-frame boundary. The left clip retains its ID; right gets a new ID. */
 export function splitClip(project: Project, clipId: string, timeAbsolute: number): Project;
+export function splitAudio(
+  project: Project,
+  itemId: string,
+  timeAbsolute: number,
+  media: ModelMedia,
+): Project;
+export function trimAudio(
+  project: Project,
+  itemId: string,
+  edge: 'start' | 'end',
+  timeAbsolute: number,
+  media: ModelMedia,
+): Project;
 export function removeItem(project: Project, kind: ItemKind, id: string): Project;
 /** Main copies are inserted immediately after their source; layer copies keep absolute times. */
 export function duplicateItem(project: Project, kind: ItemKind, id: string): Project;

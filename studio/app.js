@@ -3,6 +3,7 @@ import {
   normalizeProject,
   validateProject,
   duration,
+  timelineDuration,
   clipStarts,
   clipAt,
   clipFrames,
@@ -10,6 +11,8 @@ import {
   addOverlay,
   addAudio,
   splitClip,
+  splitAudio,
+  trimAudio,
   removeItem,
   duplicateItem,
   moveClip,
@@ -283,11 +286,15 @@ function updateControls() {
   ])
     $(id).disabled = blocked;
   for (const id of ['play', 'frame-back', 'frame-forward', 'playhead-time'])
-    $(id).disabled = blocked || !hasClips || missingSources.length > 0;
+    $(id).disabled = blocked || !timelineDuration(state.project) || missingSources.length > 0;
   $('export-open').disabled = blocked || !hasClips || missingSources.length > 0;
   $('undo').disabled = blocked || !state.history.length;
   $('redo').disabled = blocked || !state.future.length;
-  $('split').disabled = blocked || !hasClips;
+  $('split').disabled = blocked || (state.selection?.kind === 'audio' ? !item : !hasClips);
+  $('split').title =
+    state.selection?.kind === 'audio'
+      ? 'Split selected audio at playhead (S)'
+      : 'Split video at playhead (S)';
   $('duplicate').disabled = $('delete').disabled = blocked || !item;
   const index =
     state.selection?.kind === 'clip'
@@ -670,11 +677,22 @@ function renderInspector() {
     if (media.kind !== 'image')
       timeField(
         content,
-        'Source in',
+        kind === 'audio' ? 'Start in song' : 'Source in',
         item.in,
         (value) => {
           const max = kind === 'overlay' ? media.duration - item.duration : media.duration - 0.001;
-          updateItem({ in: clamp(value, 0, Math.max(0, max)) });
+          const offset = clamp(value, 0, Math.max(0, max));
+          if (kind === 'audio' && !item.loop) {
+            const length = Math.min(item.duration, media.duration - offset);
+            if (length < 1 / state.project.fps)
+              throw new Error('Leave at least one frame of audio.');
+            updateItem({
+              in: offset,
+              duration: length,
+              fadeIn: Math.min(item.fadeIn, length),
+              fadeOut: Math.min(item.fadeOut, length),
+            });
+          } else updateItem({ in: offset });
         },
         'layer-in',
       );
@@ -726,6 +744,61 @@ function renderInspector() {
       order.append(back, front);
       content.append(order);
     } else {
+      if (!item.loop)
+        timeField(
+          content,
+          'End in song',
+          Math.min(media.duration, item.in + item.duration),
+          (value) => {
+            const length = clamp(
+              value - item.in,
+              1 / state.project.fps,
+              Math.min(media.duration - item.in, 3600 - item.start),
+            );
+            updateItem({
+              duration: length,
+              fadeIn: Math.min(item.fadeIn, length),
+              fadeOut: Math.min(item.fadeOut, length),
+            });
+          },
+          'audio-out',
+        );
+      const actions = node('div', 'audio-actions');
+      const full = button(
+        'Use full song',
+        () => {
+          const length = Math.min(media.duration, 3600 - item.start);
+          updateItem({
+            in: 0,
+            duration: length,
+            loop: false,
+            fadeIn: Math.min(item.fadeIn, length),
+            fadeOut: Math.min(item.fadeOut, length),
+          });
+        },
+        'button secondary small',
+      );
+      full.id = 'audio-full';
+      const fit = button(
+        'Fit to video',
+        () => {
+          const remaining = duration(state.project) - item.start,
+            length = Math.min(remaining, item.loop ? remaining : media.duration - item.in);
+          updateItem({
+            duration: length,
+            fadeIn: Math.min(item.fadeIn, length),
+            fadeOut: Math.min(item.fadeOut, length),
+          });
+        },
+        'button secondary small',
+      );
+      fit.id = 'audio-fit';
+      fit.disabled =
+        busy() ||
+        duration(state.project) - item.start < 1 / state.project.fps ||
+        (!item.loop && media.duration - item.in < 1 / state.project.fps);
+      actions.append(full, fit);
+      content.append(actions);
       const label = node('label', 'check-field'),
         input = document.createElement('input');
       input.type = 'checkbox';
@@ -774,7 +847,7 @@ function renderInspector() {
         'inspector-note',
         kind === 'overlay'
           ? 'Drag the selected layer in the preview to move it; drag its corner to resize. Fades affect its picture and sound.'
-          : 'Non-looping audio becomes silent when the source ends. Its fade-out ends with the audible track.',
+          : 'Select audio and press S to cut at the playhead. Drag either edge to trim; drag the middle to move it. Start in song chooses a later section. Export ends with the video.',
       ),
     );
   }
@@ -818,25 +891,26 @@ function transformOverlay(item, phase) {
 function renderTimeline() {
   const p = state.project,
     total = duration(p),
-    extent = Math.max(
-      8,
-      total,
-      ...p.overlays.map((l) => l.start + l.duration),
-      ...p.audio.map((l) => l.start + l.duration),
-    ),
+    extent = Math.max(8, timelineDuration(p)),
     width = Math.max(200, extent * state.zoom + 60);
   $('timeline-content').style.width = `${width}px`;
-  $('ruler').setAttribute('aria-valuemax', String(total));
+  $('ruler').setAttribute('aria-valuemax', String(timelineDuration(p)));
   $('ruler').replaceChildren();
   const step = Math.max(
     state.zoom >= 100 ? 0.5 : state.zoom >= 40 ? 1 : 5,
     Math.ceil(extent / 200),
+    Math.ceil(60 / state.zoom),
   );
   for (let t = 0; t <= extent; t += step) {
     const mark = node('div', 'ruler-tick');
     mark.style.left = `${t * state.zoom}px`;
     mark.append(node('span', '', time(t, false)));
     $('ruler').append(mark);
+  }
+  if (total && timelineDuration(p) > total) {
+    const end = node('div', 'video-end-marker', 'Video ends');
+    end.style.left = `${total * state.zoom}px`;
+    $('ruler').append(end);
   }
   const labels = $('track-labels'),
     tracks = $('tracks');
@@ -854,7 +928,7 @@ function renderTimeline() {
       if (e.target === tr || e.target === shade) {
         const r = tr.getBoundingClientRect();
         preview.pause();
-        preview.seek(clamp((e.clientX - r.left) / state.zoom, 0, total));
+        preview.seek(clamp((e.clientX - r.left) / state.zoom, 0, timelineDuration(p)));
         select(null);
       }
     });
@@ -910,6 +984,16 @@ function timelineItem(track, item, kind, start, length, index) {
     ),
   );
   b.disabled = busy();
+  if (kind === 'audio' && state.media.has(item.mediaId)) {
+    for (const edge of ['start', 'end']) {
+      const handle = node('span', `audio-trim audio-trim-${edge}`);
+      handle.dataset.trim = edge;
+      handle.title = `Drag to trim audio ${edge}`;
+      handle.setAttribute('aria-hidden', 'true');
+      b.append(handle);
+    }
+    b.title += ` · Song ${time(item.in)} – ${time(item.in + length)} · Drag edges to trim`;
+  }
   b.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!b.dataset.dragged) select({ kind, id: item.id });
@@ -949,7 +1033,8 @@ function timelineItem(track, item, kind, start, length, index) {
       renderInspector();
       const before = clone(state.project),
         origin = e.clientX,
-        initial = item.start;
+        initial = item.start,
+        edge = kind === 'audio' ? e.target.closest('[data-trim]')?.dataset.trim : null;
       let changed = false;
       let ended = false;
       b.setPointerCapture(e.pointerId);
@@ -959,20 +1044,32 @@ function timelineItem(track, item, kind, start, length, index) {
           return;
         }
         const delta = (event.clientX - origin) / state.zoom;
-        if (Math.abs(delta) > 0.02) changed = true;
+        if (Math.abs(event.clientX - origin) > 3) changed = true;
         if (!changed) return;
-        const start = clamp(
-          Math.round((initial + delta) * state.project.fps) / state.project.fps,
-          0,
-          3600 - item.duration,
-        );
-        state.project = {
-          ...state.project,
-          [collection(kind)]: state.project[collection(kind)].map((l) =>
-            l.id === item.id ? { ...l, start } : l,
-          ),
-        };
-        b.style.left = `${start * state.zoom}px`;
+        if (edge) {
+          state.project = trimAudio(
+            before,
+            item.id,
+            edge,
+            initial + (edge === 'end' ? item.duration : 0) + delta,
+            state.media.get(item.mediaId),
+          );
+        } else {
+          const start = clamp(
+            Math.round((initial + delta) * state.project.fps) / state.project.fps,
+            0,
+            3600 - item.duration,
+          );
+          state.project = {
+            ...state.project,
+            [collection(kind)]: state.project[collection(kind)].map((l) =>
+              l.id === item.id ? { ...l, start } : l,
+            ),
+          };
+        }
+        const changedItem = selected();
+        b.style.left = `${changedItem.start * state.zoom}px`;
+        b.style.width = `${Math.max(4, changedItem.duration * state.zoom - 2)}px`;
         b.dataset.dragged = 'true';
         preview.setProject(state.project, state.media);
       };
@@ -985,13 +1082,14 @@ function timelineItem(track, item, kind, start, length, index) {
         window.removeEventListener('blur', end);
         b.removeEventListener('lostpointercapture', end);
         if (b.hasPointerCapture(e.pointerId)) b.releasePointerCapture(e.pointerId);
-        if (changed) {
+        if (changed && JSON.stringify(state.project) !== JSON.stringify(before)) {
           remember(before);
           state.revision++;
           scheduleSave();
           markOldExport();
         }
         render();
+        if (edge) announce(`Audio trimmed to ${time(selected().duration)}.`);
       };
       b.addEventListener('lostpointercapture', end);
       window.addEventListener('pointermove', move);
@@ -1003,6 +1101,16 @@ function timelineItem(track, item, kind, start, length, index) {
 }
 function split() {
   if (busy()) return;
+  if (state.selection?.kind === 'audio') {
+    const item = selected();
+    if (!item) return;
+    const next = splitAudio(state.project, item.id, state.time, state.media.get(item.mediaId)),
+      index = next.audio.findIndex((audio) => audio.id === item.id);
+    commit(next);
+    select({ kind: 'audio', id: next.audio[index + 1].id });
+    announce('Audio split. Select either piece to move, trim, or delete it.');
+    return;
+  }
   const active = clipAt(state.project, state.time);
   if (!active) throw new Error('Place the playhead inside a video clip to split it.');
   commit(splitClip(state.project, active.clip.id, state.time));
@@ -1470,7 +1578,7 @@ $('ruler').addEventListener('keydown', (e) => {
       e.key === 'Home'
         ? 0
         : e.key === 'End'
-          ? duration(state.project)
+          ? timelineDuration(state.project)
           : state.time + (e.key === 'ArrowLeft' ? -1 : 1) / state.project.fps,
     );
   }
@@ -1481,8 +1589,8 @@ $('timeline-zoom').oninput = () => {
 };
 $('zoom-fit').onclick = () => {
   state.zoom = clamp(
-    ($('timeline-scroll').clientWidth - 50) / Math.max(1, duration(state.project)),
-    16,
+    ($('timeline-scroll').clientWidth - 50) / Math.max(1, timelineDuration(state.project)),
+    0.1,
     200,
   );
   $('timeline-zoom').value = String(state.zoom);

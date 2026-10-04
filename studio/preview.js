@@ -1,4 +1,4 @@
-import { clipAt, duration } from './model.js';
+import { clipAt, timelineDuration } from './model.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 /** Preview clock and compositor. Source offsets, main cut boundaries and output
  * frame counts come from the shared model; this never modifies the project. */
@@ -60,7 +60,7 @@ export class StudioPreview {
         }
       const current = clipAt(
         this.project,
-        Math.min(this.time, Math.max(0, duration(this.project) - 1 / this.project.fps)),
+        Math.min(this.time, Math.max(0, timelineDuration(this.project) - 1 / this.project.fps)),
       );
       onSelect(current ? { kind: 'clip', id: current.clip.id } : null);
     });
@@ -119,7 +119,7 @@ export class StudioPreview {
   setProject(project, library) {
     this.project = project;
     this.library = library;
-    this.time = Math.min(this.time, duration(project));
+    this.time = Math.min(this.time, timelineDuration(project));
     this.dirty = true;
     this.resize();
     const ids = new Set([...project.clips, ...project.overlays, ...project.audio].map((i) => i.id));
@@ -158,7 +158,7 @@ export class StudioPreview {
   }
   seek(time) {
     if (!this.project) return;
-    this.time = clamp(time, 0, duration(this.project));
+    this.time = clamp(time, 0, timelineDuration(this.project));
     this.anchorTime = this.time;
     this.anchor = performance.now();
     this.dirty = true;
@@ -166,8 +166,8 @@ export class StudioPreview {
     this.onTime(this.time, this.playing);
   }
   play() {
-    if (!this.project || !this.project.clips.length) return;
-    if (this.time >= duration(this.project) - 0.0001) this.time = 0;
+    if (!this.project || !timelineDuration(this.project)) return;
+    if (this.time >= timelineDuration(this.project) - 0.0001) this.time = 0;
     this.playing = true;
     this.anchor = performance.now();
     this.anchorTime = this.time;
@@ -180,7 +180,7 @@ export class StudioPreview {
       this.time = clamp(
         this.anchorTime + (performance.now() - this.anchor) / 1000,
         0,
-        duration(this.project),
+        timelineDuration(this.project),
       );
     this.playing = false;
     for (const entry of this.elements.values()) entry.element.pause();
@@ -196,8 +196,11 @@ export class StudioPreview {
     this.raf = requestAnimationFrame(this.tick);
     if (!this.project) return;
     if (this.playing) {
-      this.time = Math.min(duration(this.project), this.anchorTime + (now - this.anchor) / 1000);
-      if (this.time >= duration(this.project)) this.pause();
+      this.time = Math.min(
+        timelineDuration(this.project),
+        this.anchorTime + (now - this.anchor) / 1000,
+      );
+      if (this.time >= timelineDuration(this.project)) this.pause();
       this.onTime(this.time, this.playing);
       this.dirty = true;
     }
@@ -311,7 +314,7 @@ export class StudioPreview {
       c = this.context,
       w = p.width,
       h = p.height,
-      total = duration(p),
+      total = timelineDuration(p),
       t = this.time >= total && total > 0 ? Math.max(0, total - 1 / p.fps) : this.time;
     const used = new Set();
     c.setTransform(this.canvas.width / w, 0, 0, this.canvas.height / h, 0, 0);

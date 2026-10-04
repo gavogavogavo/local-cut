@@ -7,9 +7,12 @@ import {
   validateProject,
   clipFrames,
   duration,
+  timelineDuration,
   clipStarts,
   clipAt,
   splitClip,
+  splitAudio,
+  trimAudio,
   removeItem,
   duplicateItem,
   moveClip,
@@ -274,8 +277,8 @@ test('image/video overlays validate source offsets, sound and finite video durat
 
 test('nonloop audio may outlast the source; source offset and audio availability remain strict', () => {
   const p = addAudio(project([clip(video, 0, 20)]), music, 0);
-  assert.equal(p.audio[0].duration, 20);
-  assert.equal(p.audio[0].loop, true);
+  assert.equal(p.audio[0].duration, 4);
+  assert.equal(p.audio[0].loop, false);
   const padded = normalizeProject({
     ...p,
     audio: [{ ...p.audio[0], loop: false, in: 3, duration: 20, fadeOut: 2 }],
@@ -287,6 +290,103 @@ test('nonloop audio may outlast the source; source offset and audio availability
   );
   assert.throws(() => addAudio(p, silent, 0), /no audio/);
   assert.throws(() => addAudio(p, image, 0), /media type/);
+});
+
+test('a 210-second song stays whole over a 55-second video and can be cut down to a later section', () => {
+  const song = { ...music, duration: 210 },
+    movie = { ...video, duration: 55 },
+    original = freeze(addAudio(project([clip(movie)]), song));
+  assert.equal(original.audio[0].duration, 210);
+  assert.equal(timelineDuration(original), 210);
+  assert.equal(duration(original), 55);
+  let p = splitAudio(original, original.audio[0].id, 80, song);
+  const first = p.audio[0].id,
+    middle = p.audio[1].id;
+  p = splitAudio(p, middle, 135, song);
+  const last = p.audio[2].id;
+  assert.deepEqual(
+    p.audio.map((a) => [a.start, a.in, a.duration]),
+    [
+      [0, 0, 80],
+      [80, 80, 55],
+      [135, 135, 75],
+    ],
+  );
+  p = removeItem(removeItem(p, 'audio', first), 'audio', last);
+  p.audio[0].start = 0;
+  assert.deepEqual(
+    validateProject(
+      p,
+      new Map([
+        [song.id, song],
+        [movie.id, movie],
+      ]),
+    ),
+    p,
+  );
+  assert.equal(timelineDuration(p), 55);
+  assert.equal(p.audio[0].in, 80);
+  assert.deepEqual(p.clips, original.clips);
+  assert.equal(original.audio.length, 1);
+});
+
+test('audio cuts preserve loop phase, gains and outer fades without adding a fade at the cut', () => {
+  let p = addAudio(project([clip(video)]), music, 1);
+  p.audio[0] = {
+    ...p.audio[0],
+    in: 3,
+    duration: 12,
+    loop: true,
+    volume: 0.6,
+    fadeIn: 0.2,
+    fadeOut: 0.4,
+  };
+  const result = splitAudio(freeze(p), p.audio[0].id, 7, music);
+  assert.equal(result.audio[0].id, p.audio[0].id);
+  assert.notEqual(result.audio[1].id, p.audio[0].id);
+  assert.deepEqual(
+    result.audio.map((a) => [a.start, a.in, a.duration, a.fadeIn, a.fadeOut, a.volume]),
+    [
+      [1, 3, 6, 0.2, 0, 0.6],
+      [7, 1, 6, 0, 0.4, 0.6],
+    ],
+  );
+  assert.doesNotThrow(() => validateProject(result, library));
+  for (const point of [1, 13, -1, NaN])
+    assert.throws(() => splitAudio(p, p.audio[0].id, point, music), ModelError);
+  assert.throws(() => splitAudio(p, randomUUID(), 7, music), ModelError);
+  assert.throws(() => splitAudio(p, p.audio[0].id, 7, video), /Relink/);
+  const silentTail = normalizeProject({ ...p, audio: [{ ...p.audio[0], loop: false }] });
+  assert.throws(() => splitAudio(silentTail, p.audio[0].id, 7, music), /silent/);
+  const full = normalizeProject({
+    ...p,
+    audio: Array.from({ length: 32 }, () => ({ ...p.audio[0], id: randomUUID() })),
+  });
+  assert.throws(() => splitAudio(full, full.audio[0].id, 7, music), /item count/);
+});
+
+test('audio edge trims stay within the source, preserve timing and support restoring either edge', () => {
+  const original = freeze(addAudio(project([clip(video)]), music, 2)),
+    id = original.audio[0].id;
+  let p = trimAudio(original, id, 'start', 3, music);
+  assert.deepEqual([p.audio[0].start, p.audio[0].in, p.audio[0].duration], [3, 1, 3]);
+  p = trimAudio(p, id, 'end', 5, music);
+  assert.equal(p.audio[0].duration, 2);
+  p = trimAudio(p, id, 'end', 9999, music);
+  assert.equal(p.audio[0].duration, 3);
+  p = trimAudio(p, id, 'start', -99, music);
+  assert.deepEqual(p, original);
+  const tiny = trimAudio(original, id, 'end', 0, music);
+  assert.ok(Math.abs(tiny.audio[0].duration - 1 / 30) < 1e-7);
+  assert.throws(() => trimAudio(original, id, 'end', NaN, music), ModelError);
+  const loop = normalizeProject({
+    ...original,
+    audio: [{ ...original.audio[0], loop: true, in: 3, duration: 10 }],
+  });
+  const loopTrim = trimAudio(loop, id, 'start', 4, music);
+  assert.equal(loopTrim.audio[0].in, 1);
+  assert.equal(loopTrim.audio[0].start + loopTrim.audio[0].duration, 12);
+  assert.doesNotThrow(() => validateProject(loopTrim, library));
 });
 
 test('layers beyond a rippled main end remain export-valid and do not extend main duration', () => {
